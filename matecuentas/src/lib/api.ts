@@ -93,7 +93,12 @@ export async function getGroupMembers(groupId: string) {
     .from('group_members')
     .select('*')
     .eq('group_id', groupId)
-  if (error) throw error
+
+  if (error) {
+    console.error('Error al obtener miembros del grupo:', error)
+    throw new Error('No se pudieron obtener los miembros del grupo')
+  }
+
   return data as GroupMember[]
 }
 
