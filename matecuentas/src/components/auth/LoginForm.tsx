@@ -8,11 +8,13 @@ export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setIsLoading(true)
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -22,10 +24,22 @@ export default function LoginForm() {
 
       if (error) throw error
 
-      router.push('/dashboard')
-    } catch (error) {
-      setError('Error al iniciar sesión. Por favor, verificá tus credenciales.')
+      if (data.user) {
+        if (data.user.email_confirmed_at) {
+          router.push('/dashboard')
+        } else {
+          setError('Che, parece que no confirmaste tu correo. Revisá tu bandeja de entrada y hacé clic en el enlace de confirmación.')
+        }
+      }
+    } catch (error: any) {
       console.error('Error de inicio de sesión:', error)
+      if (error.message === 'Invalid login credentials') {
+        setError('Uy, las credenciales no son correctas. ¿Estás seguro de que el correo y la contraseña están bien?')
+      } else {
+        setError('Hubo un problema al iniciar sesión. Intentá de nuevo, che.')
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -62,9 +76,10 @@ export default function LoginForm() {
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <button
         type="submit"
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yerba hover:bg-yerba/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yerba"
+        disabled={isLoading}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yerba hover:bg-yerba/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yerba disabled:opacity-50"
       >
-        Iniciar sesión
+        {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
       </button>
     </form>
   )
