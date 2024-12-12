@@ -24,16 +24,16 @@ export default function GroupDetailsPage() {
           try {
             const groupMembers = await getGroupMembers(groupId)
             setMembers(groupMembers)
-          } catch (memberError) {
+          } catch (memberError: any) {
             console.error('Error al obtener miembros:', memberError)
-            setError('No se pudieron cargar los miembros del grupo. Intentá de nuevo más tarde.')
+            setError('No se pudieron cargar los miembros del grupo')
           }
         } else {
-          setError('Che, no encontramos ese grupo. ¿Estás seguro que existe?')
+          setError('Grupo no encontrado')
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error al cargar detalles del grupo:', err)
-        setError('Uy, hubo un problemita al cargar los detalles del grupo. ¿Probamos de nuevo?')
+        setError('Error al cargar detalles del grupo')
       } finally {
         setLoading(false)
       }
@@ -44,7 +44,7 @@ export default function GroupDetailsPage() {
 
   if (loading) return <p className="text-center text-madera">Cargando detalles del grupo...</p>
   if (error) return <p className="text-center text-red-500">{error}</p>
-  if (!group) return null
+  if (!group) return <p className="text-center text-madera">No se encontró el grupo</p>
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -67,14 +67,12 @@ export default function GroupDetailsPage() {
             ))}
           </ul>
         ) : (
-          <p className="text-madera">Todavía no hay miembros en este grupo.</p>
+          <p className="text-madera">No hay miembros en este grupo.</p>
         )}
         
         <h3 className="text-xl font-handwriting text-yerba mt-6 mb-2">Invitar nuevo miembro</h3>
         <InviteMemberForm groupId={groupId} />
       </div>
-
-      {/* Aquí irán los componentes para manejar gastos */}
     </div>
   )
 }
