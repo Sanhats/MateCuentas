@@ -26,17 +26,23 @@ export default function GroupList() {
 
   const fetchGroups = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const fetchedGroups = await getGroups()
-      setGroups(fetchedGroups)
-    } catch (err) {
-      logger.error('Error al cargar grupos:', err)
-      setError('Uy, hubo un problemita al cargar los grupos. ¿Probamos de nuevo?')
+      setLoading(true);
+      setError(null);
+      const fetchedGroups = await getGroups();
+      
+      if (!Array.isArray(fetchedGroups)) {
+        throw new Error('Los grupos recibidos no tienen el formato esperado');
+      }
+      
+      setGroups(fetchedGroups);
+    } catch (err: any) {
+      logger.error('Error al cargar grupos:', err);
+      setError('Uy, hubo un problemita al cargar los grupos. ¿Probamos de nuevo?');
+      setGroups([]); // Asegurarnos de que groups siempre sea un array
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (

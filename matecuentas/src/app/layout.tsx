@@ -15,6 +15,9 @@ export default function RootLayout({
 
   return (
     <html lang="es">
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+      </head>
       <body>
         <QueryClientProvider client={queryClient}>
           <Navbar />

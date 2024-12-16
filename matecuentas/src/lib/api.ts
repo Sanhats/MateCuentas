@@ -1,5 +1,14 @@
-import { supabase } from './supabase'
+import { createClient } from '@supabase/supabase-js'
 import { logger } from './logger'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Faltan las credenciales de Supabase')
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
@@ -8,72 +17,54 @@ export async function getCurrentUser() {
 
 export async function getGroups() {
   const user = await getCurrentUser()
-  if (!user) throw new Error('No hay usuario autenticado')
+  if (!user) {
+    throw new Error('No hay usuario autenticado')
+  }
 
   try {
-    const { data: memberGroups, error: memberError } = await supabase
-      .from('group_members')
+    // Consulta simplificada que obtiene grupos y roles en una sola consulta
+    const { data: groups, error } = await supabase
+      .from('groups')
       .select(`
-        group_id,
-        role,
-        groups:group_id (
-          id,
-          name,
-          description,
-          created_by,
-          created_at
+        *,
+        group_members!inner (
+          role
         )
       `)
-      .eq('user_id', user.id)
+      .eq('group_members.user_id', user.id)
 
-    if (memberError) {
-      logger.error('Error al obtener grupos:', memberError)
-      throw new Error('Error al obtener los grupos')
+    if (error) {
+      logger.error('Error al obtener grupos:', error)
+      throw error
     }
 
-    if (!memberGroups) {
-      return []
-    }
-
-    return memberGroups.map(mg => ({
-      ...mg.groups,
-      role: mg.role
+    return groups.map(group => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      created_by: group.created_by,
+      created_at: group.created_at,
+      role: group.group_members[0].role
     }))
 
   } catch (error) {
-    logger.error('Error inesperado al obtener grupos:', error)
+    logger.error('Error al obtener grupos:', error)
     throw new Error('Error al cargar los grupos')
   }
 }
 
 export async function getGroupMembers(groupId: string) {
   const user = await getCurrentUser()
-  if (!user) throw new Error('No hay usuario autenticado')
+  if (!user) {
+    throw new Error('No hay usuario autenticado')
+  }
 
   try {
-    // Primero, verificamos si el usuario es miembro del grupo
-    const { data: membership, error: membershipError } = await supabase
-      .from('group_members')
-      .select('role')
-      .eq('group_id', groupId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (membershipError) {
-      logger.error('Error al verificar membresía:', membershipError)
-      throw new Error('Error al verificar la membresía del grupo')
-    }
-
-    if (!membership) {
-      throw new Error('No eres miembro de este grupo')
-    }
-
-    // Si el usuario es miembro, obtenemos los miembros del grupo
-    const { data: members, error: membersError } = await supabase
+    // Consulta simplificada que obtiene miembros con sus emails
+    const { data: members, error } = await supabase
       .from('group_members')
       .select(`
         id,
-        user_id,
         role,
         created_at,
         users:user_id (
@@ -82,15 +73,18 @@ export async function getGroupMembers(groupId: string) {
       `)
       .eq('group_id', groupId)
 
-    if (membersError) {
-      logger.error('Error al obtener miembros:', membersError)
-      throw new Error('Error al obtener los miembros del grupo')
+    if (error) {
+      logger.error('Error al obtener miembros:', error)
+      throw error
     }
 
-    return members?.map(member => ({
-      ...member,
-      email: member.users?.email
-    })) || []
+    return members.map(member => ({
+      id: member.id,
+      user_id: member.user_id,
+      role: member.role,
+      email: member.users?.email,
+      created_at: member.created_at
+    }))
 
   } catch (error) {
     logger.error('Error al obtener miembros:', error)
@@ -100,9 +94,12 @@ export async function getGroupMembers(groupId: string) {
 
 export async function createGroup(name: string, description: string) {
   const user = await getCurrentUser()
-  if (!user) throw new Error('No hay usuario autenticado')
+  if (!user) {
+    throw new Error('No hay usuario autenticado')
+  }
 
   try {
+    // Iniciar una transacción
     const { data: group, error: groupError } = await supabase
       .from('groups')
       .insert([
@@ -117,6 +114,7 @@ export async function createGroup(name: string, description: string) {
 
     if (groupError) throw groupError
 
+    // Crear el miembro admin
     const { error: memberError } = await supabase
       .from('group_members')
       .insert([
@@ -128,6 +126,7 @@ export async function createGroup(name: string, description: string) {
       ])
 
     if (memberError) {
+      // Si falla la creación del miembro, eliminar el grupo
       await supabase
         .from('groups')
         .delete()
