@@ -5,9 +5,10 @@ const nextConfig = {
   },
   reactStrictMode: true,
   experimental: {
-    appDir: false, // Asegúrate de que este valor sea correcto según tu estructura.
+    // Elimina esta clave porque no es reconocida en tu versión de Next.js.
+    // appDir: false,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config: any, { isServer }: { isServer: boolean }) => {
     if (!isServer) {
       config.resolve = {
         ...config.resolve,
