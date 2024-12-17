@@ -22,29 +22,36 @@ export async function getGroups() {
   }
 
   try {
-    // Consulta simplificada que obtiene grupos y roles en una sola consulta
-    const { data: groups, error } = await supabase
-      .from('groups')
-      .select(`
-        *,
-        group_members!inner (
-          role
-        )
-      `)
-      .eq('group_members.user_id', user.id)
+    // Primero obtenemos los grupos donde el usuario es miembro
+    const { data: memberships, error: membershipError } = await supabase
+      .from('group_members')
+      .select('group_id, role')
+      .eq('user_id', user.id)
 
-    if (error) {
-      logger.error('Error al obtener grupos:', error)
-      throw error
+    if (membershipError) {
+      logger.error('Error al obtener membresías:', membershipError)
+      throw new Error('Error al obtener los grupos')
     }
 
+    if (!memberships || memberships.length === 0) {
+      return []
+    }
+
+    // Luego obtenemos los detalles de esos grupos
+    const { data: groups, error: groupsError } = await supabase
+      .from('groups')
+      .select('*')
+      .in('id', memberships.map(m => m.group_id))
+
+    if (groupsError) {
+      logger.error('Error al obtener grupos:', groupsError)
+      throw new Error('Error al obtener los detalles de los grupos')
+    }
+
+    // Combinamos la información
     return groups.map(group => ({
-      id: group.id,
-      name: group.name,
-      description: group.description,
-      created_by: group.created_by,
-      created_at: group.created_at,
-      role: group.group_members[0].role
+      ...group,
+      role: memberships.find(m => m.group_id === group.id)?.role || 'member'
     }))
 
   } catch (error) {
@@ -60,35 +67,93 @@ export async function getGroupMembers(groupId: string) {
   }
 
   try {
-    // Consulta simplificada que obtiene miembros con sus emails
-    const { data: members, error } = await supabase
+    // Verificar si el usuario es miembro del grupo
+    const { data: membership, error: membershipError } = await supabase
+      .from('group_members')
+      .select('role')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (membershipError) {
+      logger.error('Error al verificar membresía:', membershipError)
+      throw new Error('No tienes acceso a este grupo')
+    }
+
+    // Obtener todos los miembros del grupo con sus emails
+    const { data: members, error: membersError } = await supabase
       .from('group_members')
       .select(`
         id,
+        user_id,
         role,
-        created_at,
-        users:user_id (
-          email
-        )
+        created_at
       `)
       .eq('group_id', groupId)
 
-    if (error) {
-      logger.error('Error al obtener miembros:', error)
-      throw error
+    if (membersError) {
+      logger.error('Error al obtener miembros:', membersError)
+      throw new Error('Error al obtener los miembros del grupo')
     }
 
-    return members.map(member => ({
-      id: member.id,
-      user_id: member.user_id,
-      role: member.role,
-      email: member.users?.email,
-      created_at: member.created_at
-    }))
+    // Obtener los emails usando el servicio de autenticación
+    const emailPromises = members.map(async (member) => {
+      const { data: userData } = await supabase.auth.admin.getUserById(member.user_id)
+      return {
+        ...member,
+        email: userData?.user?.email || 'Email no disponible'
+      }
+    })
+
+    const membersWithEmails = await Promise.all(emailPromises)
+    return membersWithEmails
 
   } catch (error) {
     logger.error('Error al obtener miembros:', error)
     throw new Error('Error al obtener los miembros del grupo')
+  }
+}
+
+export async function getGroupDetails(groupId: string) {
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new Error('No hay usuario autenticado')
+  }
+
+  try {
+    // Obtener detalles del grupo
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('id', groupId)
+      .single()
+
+    if (groupError) {
+      logger.error('Error al obtener grupo:', groupError)
+      throw new Error('Error al obtener los detalles del grupo')
+    }
+
+    // Obtener el rol del usuario en el grupo
+    const { data: membership, error: membershipError } = await supabase
+      .from('group_members')
+      .select('role')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (membershipError) {
+      logger.error('Error al verificar membresía:', membershipError)
+      throw new Error('No tienes acceso a este grupo')
+    }
+
+    return {
+      ...group,
+      role: membership.role
+    }
+
+  } catch (error) {
+    logger.error('Error al obtener detalles del grupo:', error)
+    throw new Error('Error al obtener los detalles del grupo')
   }
 }
 
@@ -99,7 +164,7 @@ export async function createGroup(name: string, description: string) {
   }
 
   try {
-    // Iniciar una transacción
+    // Crear el grupo
     const { data: group, error: groupError } = await supabase
       .from('groups')
       .insert([
@@ -112,7 +177,14 @@ export async function createGroup(name: string, description: string) {
       .select()
       .single()
 
-    if (groupError) throw groupError
+    if (groupError) {
+      logger.error('Error al crear grupo:', groupError)
+      throw new Error(`Error al crear el grupo: ${groupError.message}`)
+    }
+
+    if (!group) {
+      throw new Error('No se pudo crear el grupo')
+    }
 
     // Crear el miembro admin
     const { error: memberError } = await supabase
@@ -131,13 +203,15 @@ export async function createGroup(name: string, description: string) {
         .from('groups')
         .delete()
         .eq('id', group.id)
-      throw memberError
+      
+      logger.error('Error al crear miembro del grupo:', memberError)
+      throw new Error(`Error al crear el miembro del grupo: ${memberError.message}`)
     }
 
     return group
-  } catch (error) {
-    logger.error('Error al crear grupo:', error)
-    throw new Error('Error al crear el grupo')
+  } catch (error: any) {
+    logger.error('Error en la transacción:', error)
+    throw new Error(error.message || 'Error al crear el grupo')
   }
 }
 

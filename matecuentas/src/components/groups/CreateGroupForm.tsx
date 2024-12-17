@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createGroup } from '@/lib/api'
+import { logger } from '@/lib/logger'
 
 export default function CreateGroupForm() {
   const [name, setName] = useState('')
@@ -17,10 +18,14 @@ export default function CreateGroupForm() {
     setIsLoading(true)
 
     try {
-      await createGroup(name, description)
+      if (!name.trim()) {
+        throw new Error('El nombre del grupo es requerido')
+      }
+
+      await createGroup(name.trim(), description.trim())
       router.push('/groups')
     } catch (err: any) {
-      console.error('Error al crear el grupo:', err)
+      logger.error('Error al crear el grupo:', err)
       setError(err.message || 'Hubo un problema al crear el grupo. Intentá de nuevo, che.')
     } finally {
       setIsLoading(false)
@@ -41,6 +46,7 @@ export default function CreateGroupForm() {
           required
           className="mt-1 block w-full px-3 py-2 bg-white border border-yerba rounded-md text-sm shadow-sm placeholder-madera/50
                      focus:outline-none focus:border-yerba focus:ring-1 focus:ring-yerba"
+          disabled={isLoading}
         />
       </div>
       <div>
@@ -53,9 +59,14 @@ export default function CreateGroupForm() {
           onChange={(e) => setDescription(e.target.value)}
           className="mt-1 block w-full px-3 py-2 bg-white border border-yerba rounded-md text-sm shadow-sm placeholder-madera/50
                      focus:outline-none focus:border-yerba focus:ring-1 focus:ring-yerba"
+          disabled={isLoading}
         />
       </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-3">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
       <button
         type="submit"
         disabled={isLoading}
