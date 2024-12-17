@@ -1,22 +1,28 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import { NextConfig } from 'next';
+import { Configuration } from 'webpack';
+
+/** @type {NextConfig} */
+const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
   reactStrictMode: true,
   experimental: {
-    appDir: true,
+    // Cambiar a false si no estás usando la carpeta `app`
+    appDir: false,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config: Configuration, { isServer }: { isServer: boolean }) => {
     if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
+      config.resolve = {
+        ...config.resolve,
+        fallback: {
+          ...config.resolve?.fallback,
+          fs: false,
+        },
       };
     }
     return config;
   },
-}
+};
 
-module.exports = nextConfig
-
+export default nextConfig;
