@@ -15,7 +15,11 @@ export default function ConfirmPage() {
       const type = searchParams.get('type')
 
       if (token && type === 'signup') {
-        const { error } = await supabase.auth.verifyOtp({ token, type })
+        const { error } = await supabase.auth.verifyOtp({ 
+          token, 
+          type, 
+          email: '' // Valor vacío para cumplir con el tipo esperado
+        })
         if (error) {
           setMessage('Uy, hubo un problema al confirmar tu correo. Intentá de nuevo o contactá soporte.')
         } else {
@@ -37,4 +41,3 @@ export default function ConfirmPage() {
     </div>
   )
 }
-
