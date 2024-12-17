@@ -1,17 +1,13 @@
-import { NextConfig } from 'next';
-import { Configuration } from 'webpack';
-
-/** @type {NextConfig} */
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
   reactStrictMode: true,
   experimental: {
-    // Cambiar a false si no estás usando la carpeta `app`
-    appDir: false,
+    appDir: false, // Asegúrate de que este valor sea correcto según tu estructura.
   },
-  webpack: (config: Configuration, { isServer }: { isServer: boolean }) => {
+  webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve = {
         ...config.resolve,
@@ -25,4 +21,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
