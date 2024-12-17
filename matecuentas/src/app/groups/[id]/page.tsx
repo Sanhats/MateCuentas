@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getGroups, getGroupMembers } from '@/lib/api'
 import { FaUsers, FaArrowLeft, FaSpinner } from 'react-icons/fa'
-import InviteMemberForm from '@/components/groups/InviteMemberForm'
 
 interface Member {
   id: string
@@ -165,7 +164,6 @@ export default function GroupDetailsPage() {
         {group.role === 'admin' && (
           <>
             <h3 className="text-xl font-handwriting text-yerba mt-6 mb-2">Invitar nuevo miembro</h3>
-            <InviteMemberForm groupId={groupId} />
           </>
         )}
       </div>
