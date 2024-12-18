@@ -80,15 +80,10 @@ export async function getGroupMembers(groupId: string) {
       throw new Error('No tienes acceso a este grupo')
     }
 
-    // Obtener todos los miembros del grupo con sus emails
+    // Obtener los miembros del grupo
     const { data: members, error: membersError } = await supabase
       .from('group_members')
-      .select(`
-        id,
-        user_id,
-        role,
-        created_at
-      `)
+      .select('id, user_id, role, created_at')
       .eq('group_id', groupId)
 
     if (membersError) {
@@ -96,17 +91,21 @@ export async function getGroupMembers(groupId: string) {
       throw new Error('Error al obtener los miembros del grupo')
     }
 
-    // Obtener los emails usando el servicio de autenticación
+    // Obtener los emails de los usuarios
     const emailPromises = members.map(async (member) => {
-      const { data: userData } = await supabase.auth.admin.getUserById(member.user_id)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('email')
+        .eq('id', member.user_id)
+        .single()
+
       return {
         ...member,
-        email: userData?.user?.email || 'Email no disponible'
+        email: userData?.email || 'Email no disponible'
       }
     })
 
-    const membersWithEmails = await Promise.all(emailPromises)
-    return membersWithEmails
+    return Promise.all(emailPromises)
 
   } catch (error) {
     logger.error('Error al obtener miembros:', error)
