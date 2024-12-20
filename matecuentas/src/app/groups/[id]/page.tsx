@@ -1,86 +1,45 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getGroups, getGroupMembers } from '@/lib/api'
+import { getGroupDetails, getGroupMembers, Group, GroupMember } from '@/lib/api'
 import { FaUsers, FaArrowLeft, FaSpinner } from 'react-icons/fa'
-
-interface Member {
-  id: string
-  user_id: string
-  role: 'admin' | 'member'
-  email?: string
-  created_at: string
-}
-
-interface Group {
-  id: string
-  name: string
-  description: string
-  created_by: string
-  created_at: string
-  role?: 'admin' | 'member'
-}
+import InviteMemberForm from '@/components/groups/InviteMemberForm'
+import { logger } from '@/lib/logger'
 
 export default function GroupDetailsPage() {
   const [group, setGroup] = useState<Group | null>(null)
-  const [members, setMembers] = useState<Member[]>([])
+  const [members, setMembers] = useState<GroupMember[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const params = useParams()
   const router = useRouter()
   const groupId = params.id as string
 
-  useEffect(() => {
-    let isMounted = true
+  const fetchGroupDetails = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-    async function fetchGroupDetails() {
-      try {
-        setLoading(true)
-        setError(null)
+      const [groupDetails, groupMembers] = await Promise.all([
+        getGroupDetails(groupId),
+        getGroupMembers(groupId)
+      ]);
 
-        // Obtener el grupo
-        const groups = await getGroups()
-        const foundGroup = groups.find(g => g.id === groupId)
-        
-        if (!foundGroup) {
-          throw new Error('Grupo no encontrado')
-        }
+      setGroup(groupDetails)
+      setMembers(groupMembers)
 
-        if (isMounted) {
-          setGroup(foundGroup)
-          
-          try {
-            // Obtener miembros
-            const groupMembers = await getGroupMembers(groupId)
-            if (isMounted) {
-              setMembers(groupMembers)
-            }
-          } catch (memberError: any) {
-            console.error('Error al obtener miembros:', memberError)
-            if (isMounted) {
-              setError('Error al obtener los miembros del grupo')
-            }
-          }
-        }
-      } catch (err: any) {
-        console.error('Error al cargar detalles:', err)
-        if (isMounted) {
-          setError(err.message || 'Error al cargar los detalles del grupo')
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchGroupDetails()
-
-    return () => {
-      isMounted = false
+    } catch (err: any) {
+      logger.error('Error al cargar detalles:', err)
+      setError(err.message || 'Error al cargar los detalles del grupo')
+    } finally {
+      setLoading(false)
     }
   }, [groupId])
+
+  useEffect(() => {
+    fetchGroupDetails()
+  }, [fetchGroupDetails])
 
   if (loading) {
     return (
@@ -148,7 +107,7 @@ export default function GroupDetailsPage() {
           <ul className="space-y-2">
             {members.map((member) => (
               <li key={member.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                <span className="text-madera">{member.email || member.user_id}</span>
+                <span className="text-madera">{member.email}</span>
                 <span className={`ml-2 px-3 py-1 rounded-full text-white text-xs ${
                   member.role === 'admin' ? 'bg-yerba' : 'bg-madera'
                 }`}>
@@ -164,6 +123,10 @@ export default function GroupDetailsPage() {
         {group.role === 'admin' && (
           <>
             <h3 className="text-xl font-handwriting text-yerba mt-6 mb-2">Invitar nuevo miembro</h3>
+            <InviteMemberForm 
+              groupId={groupId} 
+              onMemberAdded={fetchGroupDetails}
+            />
           </>
         )}
       </div>
