@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const [message, setMessage] = useState('Confirmando tu correo electrónico...')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -34,10 +34,17 @@ export default function ConfirmPage() {
     confirmEmail()
   }, [router, searchParams])
 
+  return <p className="text-madera">{message}</p>
+}
+
+export default function ConfirmPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-beige">
       <h1 className="text-3xl font-handwriting text-yerba mb-4">Confirmación de Correo</h1>
-      <p className="text-madera">{message}</p>
+      <Suspense fallback={<p className="text-madera">Cargando...</p>}>
+        <ConfirmContent />
+      </Suspense>
     </div>
   )
 }
+
