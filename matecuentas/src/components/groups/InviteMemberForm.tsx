@@ -5,8 +5,8 @@ import { inviteToGroup } from '@/lib/api'
 import { FaEnvelope, FaSpinner } from 'react-icons/fa'
 
 interface InviteMemberFormProps {
-  groupId: string;
-  onMemberAdded?: () => void;
+  groupId: string
+  onMemberAdded?: () => void
 }
 
 export default function InviteMemberForm({ groupId, onMemberAdded }: InviteMemberFormProps) {
@@ -17,17 +17,19 @@ export default function InviteMemberForm({ groupId, onMemberAdded }: InviteMembe
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!email.trim()) return
+
     setIsLoading(true)
     setError(null)
     setSuccess(null)
 
     try {
       await inviteToGroup(groupId, email.trim())
-      setSuccess(`Se ha invitado exitosamente a ${email}`)
+      setSuccess(`Se ha enviado una invitación a ${email}`)
       setEmail('')
       onMemberAdded?.()
     } catch (err: any) {
-      setError(err.message || 'Error al invitar al usuario')
+      setError(err.message || 'Error al enviar la invitación')
     } finally {
       setIsLoading(false)
     }
@@ -48,13 +50,13 @@ export default function InviteMemberForm({ groupId, onMemberAdded }: InviteMembe
           />
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !email.trim()}
             className="bg-yerba text-white px-4 py-2 rounded-r-md hover:bg-yerba/90 focus:outline-none focus:ring-2 focus:ring-yerba focus:ring-offset-2 disabled:opacity-50 flex items-center"
           >
             {isLoading ? (
               <>
                 <FaSpinner className="animate-spin mr-2" />
-                Invitando...
+                Enviando...
               </>
             ) : (
               <>

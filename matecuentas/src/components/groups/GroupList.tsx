@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getGroups, Group } from '@/lib/api'
-import { FaSpinner, FaExclamationTriangle } from 'react-icons/fa'
+import { FaSpinner, FaExclamationTriangle, FaUsers, FaPlus } from 'react-icons/fa'
 import { logger } from '@/lib/logger'
 
 export default function GroupList() {
@@ -58,11 +58,15 @@ export default function GroupList() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-handwriting text-yerba">Tus grupos de mate</h2>
+        <h2 className="text-2xl font-handwriting text-yerba flex items-center">
+          <FaUsers className="mr-2" />
+          Tus grupos de mate
+        </h2>
         <Link
           href="/groups/new"
-          className="bg-yerba text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors"
+          className="bg-yerba text-white px-4 py-2 rounded hover:bg-opacity-90 transition-colors flex items-center"
         >
+          <FaPlus className="mr-2" />
           Crear nuevo grupo
         </Link>
       </div>
@@ -74,8 +78,9 @@ export default function GroupList() {
           </p>
           <Link
             href="/groups/new"
-            className="inline-block bg-yerba text-white px-6 py-3 rounded-lg hover:bg-opacity-90 transition-colors"
+            className="inline-flex items-center bg-yerba text-white px-6 py-3 rounded-lg hover:bg-opacity-90 transition-colors"
           >
+            <FaPlus className="mr-2" />
             Crear mi primer grupo
           </Link>
         </div>
